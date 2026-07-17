@@ -25,6 +25,7 @@ JOBS = [
  ("Comfy-Org/flux2-dev","split_files/vae/flux2-vae.safetensors","vae"),
  ("Comfy-Org/flux2-dev","split_files/loras/Flux2TurboComfyv2.safetensors","loras"),
  ("alibaba-pai/FLUX.2-dev-Fun-Controlnet-Union","FLUX.2-dev-Fun-Controlnet-Union.safetensors","controlnet"),
+ ("alibaba-pai/FLUX.2-dev-Fun-Controlnet-Union","FLUX.2-dev-Fun-Controlnet-Union-2602.safetensors","controlnet"),
 ]
 for repo, path, sub in JOBS:
     dest = f"{VOL}/models/{sub}/{os.path.basename(path)}"

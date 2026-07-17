@@ -7,7 +7,9 @@ FROM runpod/worker-comfyui:5.8.6-base-cuda12.8.1
 # ── cutting-edge custom nodes (baked; volume can't carry these) ──────────────────────────────
 # Pinned by clone at build time. Each justified for OUR geometry-locked concept-gen pipeline.
 WORKDIR /comfyui/custom_nodes
-RUN git clone --depth 1 -b master https://github.com/bryanmcguire/comfyui-flux2fun-controlnet.git && \
+# flux2fun-controlnet: use the MAINTAINED fork (shrinidhi666) — the original (bryanmcguire) is abandoned and
+# breaks on new ComfyUI. This fork fixes timestep_zero_index kwargs + ControlNetWrapper multigpu + low-VRAM.
+RUN git clone --depth 1 https://github.com/shrinidhi666/comfyui-flux2fun-controlnet.git && \
     git clone --depth 1 https://github.com/Fannovel16/comfyui_controlnet_aux.git && \
     git clone --depth 1 https://github.com/rgthree/rgthree-comfy.git && \
     git clone --depth 1 https://github.com/kijai/ComfyUI-KJNodes.git && \
@@ -19,12 +21,6 @@ RUN git clone --depth 1 -b master https://github.com/bryanmcguire/comfyui-flux2f
 #   ComfyUI-KJNodes             → advanced image/latent/mask utilities
 #   ComfyUI_essentials          → resize/pad/mask helpers to fit conditioning to model res
 #   ComfyUI_UltimateSDUpscale   → tiled hi-res upscale for the T4 hero pass
-
-# COMPAT PATCH: flux2fun-controlnet monkey-patches Flux.forward_orig with a fixed signature; newer
-# ComfyUI (5.8.6) passes extra kwargs (e.g. timestep_zero_index) → crash on ALL FLUX.2 gen. Absorb them.
-RUN sed -i 's/        attn_mask: Tensor = None,/        attn_mask: Tensor = None,\n        **kwargs,/' \
-      comfyui-flux2fun-controlnet/flux_patch.py && \
-    grep -q "kwargs" comfyui-flux2fun-controlnet/flux_patch.py && echo "flux_patch kwargs OK"
 
 # install huggingface_hub into the SAME python3 the bootstrap uses (root cause of the empty-volume:
 # it was installed into a different env than the one running bootstrap_models.sh).

@@ -15,7 +15,7 @@
   "26": {"class_type": "FluxGuidance", "inputs": {"conditioning": ["6", 0], "guidance": 3.5}},
   "31": {"class_type": "LoadImage", "inputs": {"image": "depth_hero.png"}},
   "32": {"class_type": "LoadImage", "inputs": {"image": "silhouette_hero.png"}},
-  "40": {"class_type": "Flux2FunControlNetLoader", "inputs": {"controlnet_name": "FLUX.2-dev-Fun-Controlnet-Union.safetensors"}},
+  "40": {"class_type": "Flux2FunControlNetLoader", "inputs": {"controlnet_name": "FLUX.2-dev-Fun-Controlnet-Union-2602.safetensors"}},
   "41": {"class_type": "Flux2FunControlNetApply", "inputs": {"conditioning": ["26", 0], "controlnet": ["40", 0], "vae": ["10", 0], "strength": 0.75, "control_image": ["31", 0]}},
   "42": {"class_type": "Flux2FunControlNetApply", "inputs": {"conditioning": ["41", 0], "controlnet": ["40", 0], "vae": ["10", 0], "strength": 0.30, "control_image": ["32", 0]}}
 }
