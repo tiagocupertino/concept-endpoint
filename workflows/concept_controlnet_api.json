@@ -1,0 +1,21 @@
+{
+  "_comment": "FLUX.2-dev geometry-locked concept-gen. Depth (0.75) + silhouette/canny (0.30) via Fun-ControlNet-Union. Placeholders <PROMPT>/<SEED>/<BATCH>/<DEPTH_IMG>/<CANNY_IMG> patched by burst_client. VALIDATE node names against live endpoint after smoke test.",
+  "5":  {"class_type": "EmptyFlux2LatentImage", "inputs": {"width": 1024, "height": 1024, "batch_size": 1}},
+  "6":  {"class_type": "CLIPTextEncode", "inputs": {"text": "<PROMPT>", "clip": ["11", 0]}},
+  "8":  {"class_type": "VAEDecode", "inputs": {"samples": ["13", 0], "vae": ["10", 0]}},
+  "9":  {"class_type": "SaveImage", "inputs": {"filename_prefix": "concept", "images": ["8", 0]}},
+  "10": {"class_type": "VAELoader", "inputs": {"vae_name": "flux2-vae.safetensors"}},
+  "11": {"class_type": "CLIPLoader", "inputs": {"clip_name": "mistral_3_small_flux2_fp8.safetensors", "type": "flux2"}},
+  "12": {"class_type": "UNETLoader", "inputs": {"unet_name": "flux2_dev_fp8mixed.safetensors", "weight_dtype": "default"}},
+  "13": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["25", 0], "guider": ["22", 0], "sampler": ["16", 0], "sigmas": ["17", 0], "latent_image": ["5", 0]}},
+  "16": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+  "17": {"class_type": "Flux2Scheduler", "inputs": {"steps": 25, "denoise": 1, "width": 1024, "height": 1024}},
+  "22": {"class_type": "BasicGuider", "inputs": {"model": ["12", 0], "conditioning": ["42", 0]}},
+  "25": {"class_type": "RandomNoise", "inputs": {"noise_seed": 42}},
+  "26": {"class_type": "FluxGuidance", "inputs": {"conditioning": ["6", 0], "guidance": 3.5}},
+  "31": {"class_type": "LoadImage", "inputs": {"image": "depth_hero.png"}},
+  "32": {"class_type": "LoadImage", "inputs": {"image": "silhouette_hero.png"}},
+  "40": {"class_type": "Flux2FunControlNetLoader", "inputs": {"controlnet_name": "FLUX.2-dev-Fun-Controlnet-Union.safetensors"}},
+  "41": {"class_type": "Flux2FunControlNetApply", "inputs": {"conditioning": ["26", 0], "controlnet": ["40", 0], "vae": ["10", 0], "strength": 0.75, "control_image": ["31", 0]}},
+  "42": {"class_type": "Flux2FunControlNetApply", "inputs": {"conditioning": ["41", 0], "controlnet": ["40", 0], "vae": ["10", 0], "strength": 0.30, "control_image": ["32", 0]}}
+}
