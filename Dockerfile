@@ -20,10 +20,12 @@ RUN git clone --depth 1 -b master https://github.com/bryanmcguire/comfyui-flux2f
 #   ComfyUI_essentials          → resize/pad/mask helpers to fit conditioning to model res
 #   ComfyUI_UltimateSDUpscale   → tiled hi-res upscale for the T4 hero pass
 
-# install each node's python deps into the comfy env (hf_transfer for fast model pulls at boot)
-RUN pip install --no-cache-dir --break-system-packages "huggingface_hub[hf_transfer]" || \
-    pip install --no-cache-dir "huggingface_hub[hf_transfer]" ; \
-    for d in */ ; do \
+# install huggingface_hub into the SAME python3 the bootstrap uses (root cause of the empty-volume:
+# it was installed into a different env than the one running bootstrap_models.sh).
+RUN python3 -m pip install --no-cache-dir --break-system-packages huggingface_hub || \
+    python3 -m pip install --no-cache-dir huggingface_hub
+# install each node's python deps
+RUN for d in */ ; do \
       if [ -f "$d/requirements.txt" ]; then \
         echo "== deps: $d ==" ; \
         pip install --no-cache-dir --break-system-packages -r "$d/requirements.txt" || \

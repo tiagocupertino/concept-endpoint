@@ -4,37 +4,39 @@
 # network volume the first time only (subsequent boots see the files and skip = fast). This is
 # also what makes the endpoint PORTABLE: point it at a fresh volume in any datacenter and the
 # first boot repopulates it automatically — the image and config stay identical.
+#
+# ROBUST download: python hf_hub_download (NOT the hf CLI + hf_transfer, which failed silently when
+# hf_transfer wasn't importable in the runtime env → left the volume empty → ComfyUI 'not in []').
 set -uo pipefail
-
 VOL="${RUNPOD_VOLUME_PATH:-/runpod-volume}"
-M="$VOL/models"
-export HF_HUB_ENABLE_HF_TRANSFER=1
+echo "[boot] model bootstrap → $VOL/models"
 
-echo "[boot] model bootstrap → $M"
-mkdir -p "$M/diffusion_models" "$M/text_encoders" "$M/vae" "$M/loras" "$M/controlnet"
+python3 - <<'PY'
+import os, shutil, sys
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"   # robust plain download, no hf_transfer dependency
+try:
+    from huggingface_hub import hf_hub_download
+except Exception as e:
+    print("[boot] FATAL: huggingface_hub missing in this python:", e, flush=True); sys.exit(1)
+VOL = os.environ.get("RUNPOD_VOLUME_PATH", "/runpod-volume")
+JOBS = [
+ ("Comfy-Org/flux2-dev","split_files/diffusion_models/flux2_dev_fp8mixed.safetensors","diffusion_models"),
+ ("Comfy-Org/flux2-dev","split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors","text_encoders"),
+ ("Comfy-Org/flux2-dev","split_files/vae/flux2-vae.safetensors","vae"),
+ ("Comfy-Org/flux2-dev","split_files/loras/Flux2TurboComfyv2.safetensors","loras"),
+ ("alibaba-pai/FLUX.2-dev-Fun-Controlnet-Union","FLUX.2-dev-Fun-Controlnet-Union.safetensors","controlnet"),
+]
+for repo, path, sub in JOBS:
+    dest = f"{VOL}/models/{sub}/{os.path.basename(path)}"
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if os.path.exists(dest) and os.path.getsize(dest) > 1_000_000:
+        print("[boot] HAVE", dest, flush=True); continue
+    print("[boot] DL", repo, path, flush=True)
+    f = hf_hub_download(repo, path)
+    shutil.copy(f, dest)
+    print("[boot] SAVED", dest, os.path.getsize(dest), flush=True)
+print("[boot] ALL_MODELS_DONE", flush=True)
+PY
 
-dl () {  # $1=repo  $2=repo_path  $3=dest_abs
-  local repo="$1" path="$2" dest="$3"
-  if [ -s "$dest" ]; then echo "[boot] ✓ have $(basename "$dest")"; return 0; fi
-  echo "[boot] ↓ $repo :: $path"
-  # --local-dir keeps the repo subpath; download into a scratch dir on the SAME fs then move (rename, instant)
-  hf download "$repo" "$path" --local-dir "$VOL/.hf_scratch" >/dev/null 2>&1 || \
-    huggingface-cli download "$repo" "$path" --local-dir "$VOL/.hf_scratch" >/dev/null 2>&1
-  if [ -s "$VOL/.hf_scratch/$path" ]; then
-    mv -f "$VOL/.hf_scratch/$path" "$dest"
-    echo "[boot] ✓ $(basename "$dest")"
-  else
-    echo "[boot] ✗ FAILED $repo :: $path"
-  fi
-}
-
-# Sequential (hf_transfer already parallelizes chunks internally → the 35GB file dominates, ~few min once).
-dl Comfy-Org/flux2-dev split_files/diffusion_models/flux2_dev_fp8mixed.safetensors      "$M/diffusion_models/flux2_dev_fp8mixed.safetensors"
-dl Comfy-Org/flux2-dev split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors  "$M/text_encoders/mistral_3_small_flux2_fp8.safetensors"
-dl Comfy-Org/flux2-dev split_files/vae/flux2-vae.safetensors                            "$M/vae/flux2-vae.safetensors"
-dl Comfy-Org/flux2-dev split_files/loras/Flux2TurboComfyv2.safetensors                  "$M/loras/Flux2TurboComfyv2.safetensors"
-dl alibaba-pai/FLUX.2-dev-Fun-Controlnet-Union FLUX.2-dev-Fun-Controlnet-Union.safetensors "$M/controlnet/FLUX.2-dev-Fun-Controlnet-Union.safetensors"
-
-rm -rf "$VOL/.hf_scratch" 2>/dev/null || true
-echo "[boot] models ready → starting worker-comfyui"
+echo "[boot] starting worker-comfyui handler"
 exec /start.sh
