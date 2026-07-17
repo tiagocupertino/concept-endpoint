@@ -33,6 +33,9 @@ RUN for d in */ ; do \
       fi ; \
     done
 
+# ── point ComfyUI at the volume models (worker-comfyui does NOT auto-discover them) ──
+COPY extra_model_paths.yaml /comfyui/extra_model_paths.yaml
+
 # ── boot wrapper: idempotently populate the network volume with models, then hand off to worker ──
 COPY bootstrap_models.sh /pipeline_boot.sh
 RUN chmod +x /pipeline_boot.sh
